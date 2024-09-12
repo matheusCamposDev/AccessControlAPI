@@ -1,5 +1,7 @@
 ﻿using AccessControlAPI.Dtos.Account;
+using AccessControlAPI.Interfaces;
 using AccessControlAPI.Models;
+using AccessControlAPI.Service;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Rewrite;
@@ -11,9 +13,11 @@ namespace AccessControlAPI.Controllers
     public class AccountController : ControllerBase
     {
         private readonly UserManager<AppUser> _userManager;
-        public AccountController(UserManager<AppUser> userManager)
+        private readonly ITokenService _tokenService;
+        public AccountController(UserManager<AppUser> userManager, ITokenService tokenService)
         {
             _userManager = userManager;
+            _tokenService = tokenService;
         }
 
         [HttpPost("register")]
@@ -36,7 +40,12 @@ namespace AccessControlAPI.Controllers
                     var roleResult = await _userManager.AddToRoleAsync(appUSer, "User");
                     if (roleResult.Succeeded)
                     {
-                        return Ok();
+                        return Ok(new NewUserDto
+                        {
+                            UserName = appUSer.UserName,
+                            Email = appUSer.Email,
+                            Token = _tokenService.CreateToken(appUSer),
+                        });
                     }
                     else
                     {
@@ -50,7 +59,7 @@ namespace AccessControlAPI.Controllers
             }
             catch (Exception ex) 
             {
-                return StatusCode(500, ex);
+                return StatusCode(500, ex.Message);
             }
         }
     }
